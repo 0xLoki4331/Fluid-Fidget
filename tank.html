@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>APIC Fluid Tank</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="glcanvas"></canvas>
+<canvas id="ripple-canvas"></canvas>
+
+<!-- Loading Overlay -->
+<div id="loading">
+    <div>INITIALIZING FLUID TANK</div>
+</div>
+
+<!-- Mobile UI Toast -->
+<div id="gesture-toast" class="toast-hidden">Interaction</div>
+
+<!-- Persistent UI Panel -->
+<div id="ui-panel">
+    <div id="ui-header">
+        <h2 style="margin:0; font-weight:600; font-size:1.1rem; letter-spacing:1px;">FLUID TANK</h2>
+        <button id="fullscreen-btn" title="Toggle UI (F)">&#x26F6;</button>
+    </div>
+    
+    <div id="ui-scroll">
+        <div class="stats">
+            <span id="fps-counter">60 FPS</span><br>
+            <span id="particle-counter">30k particles</span>
+        </div>
+
+        <!-- ── COLOR THEMES ── -->
+        <div style="margin-bottom: 20px;">
+            <div style="font-size: 0.75rem; color: #8892b0; margin-bottom: 8px; letter-spacing: 1px;">COLOR THEME</div>
+            <div class="theme-row">
+                <button class="theme-btn active" data-theme="neon">Neon</button>
+                <button class="theme-btn" data-theme="pastel">Water</button>
+                <button class="theme-btn" data-theme="mono">Mono</button>
+                <button class="theme-btn" data-theme="fire">Lava</button>
+            </div>
+            <button class="theme-btn" data-theme="pressure" style="width:100%; margin-top: 8px;">Pressure — live per-particle heatmap</button>
+            <div class="color-swatch-container">
+                <canvas id="color-swatch" height="8"></canvas>
+            </div>
+        </div>
+
+        <!-- ── ACCORDIONS ── -->
+        <div class="accordion-section open">
+            <div class="accordion-header">Physics <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    Fluid Drag: <span id="val-drag">0.99</span>
+                    <small>Higher = Slippery. Lower = Sticky.</small>
+                    <input type="range" id="slider-drag" min="0.80" max="1.0" step="0.01" value="0.99">
+                </label>
+                <div class="gravity-row">
+                    <label style="flex:1; min-width:0;">
+                        Gravity: <span id="val-gravity">0.55</span>
+                        <small>Acceleration applied every frame.</small>
+                        <input type="range" id="slider-gravity" min="0" max="2.0" step="0.05" value="0.55">
+                    </label>
+                    <canvas id="gravity-wheel" width="72" height="72" title="Click or drag to set gravity direction"></canvas>
+                </div>
+                <label>
+                    Wall Bounce: <span id="val-restitution">0.30</span>
+                    <small>0 = walls absorb all impact. 1 = perfectly elastic.</small>
+                    <input type="range" id="slider-restitution" min="0" max="1" step="0.05" value="0.30">
+                </label>
+            </div>
+        </div>
+
+        <div class="accordion-section open">
+            <div class="accordion-header">Interaction <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    Cursor Force: <span id="val-force">1.5</span>
+                    <small>How hard your mouse pushes the fluid.</small>
+                    <input type="range" id="slider-force" min="0.0" max="5.0" step="0.1" value="1.5">
+                </label>
+                <label>
+                    Cursor Radius: <span id="val-radius">60</span>
+                    <small>Pixel size of your interaction brush.</small>
+                    <input type="range" id="slider-radius" min="10" max="250" step="1" value="60">
+                </label>
+                <label>
+                    <input type="checkbox" id="check-obstacle"> Spawn Interactive Obstacle
+                    <small>Right-Click &amp; drag an invisible wall.</small>
+                </label>
+                <label>
+                    Obstacle Radius: <span id="val-obsradius">80</span>
+                    <small>Size of the collision sphere.</small>
+                    <input type="range" id="slider-obsradius" min="20" max="300" step="5" value="80">
+                </label>
+            </div>
+        </div>
+
+        <div class="accordion-section open">
+            <div class="accordion-header">Rendering <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    <input type="checkbox" id="check-metaball" checked> Use 3D SSFR Liquid
+                    <small>Renders screen-space fluid with depth and refraction.</small>
+                </label>
+                <label>
+                    SSFR Blur Radius: <span id="val-metaball">1.0</span>
+                    <small>Depth smoothing radius.</small>
+                    <input type="range" id="slider-metaball" min="0.1" max="5.0" step="0.1" value="1.0">
+                </label>
+                <label>
+                    Refraction Index: <span id="val-refraction">1.33</span>
+                    <small>Glass vs Water distortion.</small>
+                    <input type="range" id="slider-refraction" min="1.0" max="2.0" step="0.01" value="1.33">
+                </label>
+                <label>
+                    Vorticity Spin: <span id="val-vorticity">0.0</span>
+                    <small>Injects artificial turbulent rotation into fluid flows.</small>
+                    <input type="range" id="slider-vorticity" min="0.0" max="5.0" step="0.1" value="0.0">
+                </label>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">Setup <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    Grid Physics Resolution: <span id="val-spacing">8</span>
+                    <small>Lower = Smaller &amp; finer swirls but CPU heavy.</small>
+                    <input type="range" id="slider-spacing" min="4" max="25" step="1" value="8">
+                </label>
+                <label>
+                    Pressure Solver Iterations: <span id="val-iters">50</span>
+                    <small>Higher = Stiff incompressible water. Lower = Bouncy elastic gel.</small>
+                    <input type="range" id="slider-iters" min="5" max="200" step="1" value="50">
+                </label>
+            </div>
+        </div>
+    </div>
+</div>
+
+<button id="motion-permission" class="hidden">Enable Device Motion</button>
+
+<script src="tank_script.js"></script>
+</body>
+</html>
