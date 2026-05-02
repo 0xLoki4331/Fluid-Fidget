@@ -1,5 +1,5 @@
 // gpu_script.js
-const canvas = document.getElementById('simCanvas');
+const canvas = document.getElementById('glcanvas');
 const gl = canvas.getContext('webgl2', {antialias: false});
 const loading = document.getElementById('loading');
 
