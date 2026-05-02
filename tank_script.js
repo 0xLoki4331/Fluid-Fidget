@@ -1248,11 +1248,21 @@ function initFreeFluidParticles() {
     data[b + 11] = 0;  data[b + 12] = 0;  // Byx, Byy
   }
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, particleBufferA);
-  gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, particleBufferB);
-  gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+  if (particleBufferA) gl.deleteBuffer(particleBufferA);
+  if (particleBufferB) gl.deleteBuffer(particleBufferB);
+
+  particleBufferA = makeBuffer(data, gl.DYNAMIC_DRAW);
+  particleBufferB = makeBuffer(data, gl.DYNAMIC_DRAW);
+
+  particleVAOA = makeVAO(particleBufferA);
+  particleVAOB = makeVAO(particleBufferB);
+
+  transformFeedbackA = makeTransformFeedback(particleBufferA);
+  transformFeedbackB = makeTransformFeedback(particleBufferB);
+
+  // Unbind to prevent Transform Feedback write conflicts
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindVertexArray(null);
 
   isBufferA = true;
   updateHUD();
