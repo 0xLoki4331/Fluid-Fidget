@@ -160,6 +160,10 @@ body.demo-mode #controls { opacity: 0; }
     pointer-events: none;
 }
 
+.item-hidden {
+    display: none !important;
+}
+
 /* Custom scrollbar */
 #ui-panel::-webkit-scrollbar { width: 4px; }
 #ui-panel::-webkit-scrollbar-track { background: transparent; }

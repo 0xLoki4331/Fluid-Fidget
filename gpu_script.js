@@ -555,6 +555,8 @@ const normalizeFS = `#version 300 es
 precision highp float;
 in vec2 v_uv;
 uniform sampler2D u_velocityGrid;
+uniform vec2 u_gravity;
+uniform bool u_isFreeFluid;
 
 out vec4 outColor;
 
@@ -565,6 +567,7 @@ void main() {
     if (weight > 0.0001) {
         vel = data.xy / weight;
     }
+    
     // Write normalized velocity back to Grid, keeping weight for later or resetting
     outColor = vec4(vel, 0.0, weight);
 }
@@ -823,6 +826,7 @@ uniform bool u_useObs;
 uniform vec2 u_gravity;
 uniform float u_restitution;
 uniform float u_drag;
+uniform bool u_isFreeFluid;
 
 void main() {
     vec2 pos = a_pos;
@@ -859,38 +863,78 @@ void main() {
 
     vel = v_new;
     v_B = B_new * 4.0; // APIC scale factor
-
-
     // --- 2. Apply Custom Forces (Text Spring & Mouse) ---
-    vec2 returnDir = target - pos;
-    float dist = length(returnDir);
-
     float springMod = 1.0;
     if (u_pointer.x != -1000.0) {
         vec2 cDir = u_pointer - pos;
         float cDist = length(cDir);
-        float interactRadius = u_cursorRadius * u_yieldMult;
-        if (cDist < interactRadius) {
-            springMod = max(0.0, cDist / interactRadius);
-            springMod = springMod * springMod * springMod;
-        }
 
-        if (u_pointerVel > 0.0) {
-            float sweepRadius = u_cursorRadius;
+        if (u_isFreeFluid) {
+            // Free Fluid: Cursor acts as a solid wave pusher
+            float sweepRadius = u_cursorRadius * 1.5;
             if (cDist < sweepRadius) {
-                float falloff = exp(-(cDist * cDist) / (sweepRadius * sweepRadius * 0.5));
-                vec2 swipeDir = normalize(u_pointer - u_pointerPrev);
-                float maxSpeed = 35.0;
-                float ptrSpd = min(u_pointerVel, maxSpeed);
-                vel += swipeDir * ptrSpd * u_cursorForce * falloff;
+                float falloff = exp(-(cDist * cDist) / (sweepRadius * sweepRadius * 0.3));
+                if (u_pointerVel > 0.0) {
+                    vec2 swipeDir = normalize(u_pointer - u_pointerPrev);
+                    float ptrSpd = min(u_pointerVel, 40.0);
+                    vel += swipeDir * ptrSpd * u_cursorForce * falloff * 0.6;
+                } else {
+                    // Radial push away if cursor is still
+                    vel -= normalize(cDir) * u_cursorForce * falloff * 2.0;
+                }
+            }
+        } else {
+            // Text Spring Mode: Cursor breaks the spring
+            float interactRadius = u_cursorRadius * u_yieldMult;
+            if (cDist < interactRadius) {
+                springMod = max(0.0, cDist / interactRadius);
+                springMod = springMod * springMod * springMod;
+            }
+
+            if (u_pointerVel > 0.0) {
+                float sweepRadius = u_cursorRadius;
+                if (cDist < sweepRadius) {
+                    float falloff = exp(-(cDist * cDist) / (sweepRadius * sweepRadius * 0.5));
+                    vec2 swipeDir = normalize(u_pointer - u_pointerPrev);
+                    float ptrSpd = min(u_pointerVel, 35.0);
+                    vel += swipeDir * ptrSpd * u_cursorForce * falloff;
+                }
             }
         }
     }
 
-    if (dist > 0.0) {
-        float ease = dist / (dist + u_springDecel);
-        float pull = ease * u_springPull * springMod;
-        vel += (returnDir / dist) * pull;
+    if (!u_isFreeFluid) {
+        vec2 returnDir = target - pos;
+        float dist = length(returnDir);
+        if (dist > 0.0) {
+            float ease = dist / (dist + u_springDecel);
+            float pull = ease * u_springPull * springMod;
+            vel += (returnDir / dist) * pull;
+        }
+    } else {
+        // Free Fluid: Density-based volume preservation (Pseudo-SPH)
+        vec2 uvCenter = pos / (u_gridRes * u_spacing);
+        vec2 dx = vec2(1.0 / u_gridRes.x, 0.0);
+        vec2 dy = vec2(0.0, 1.0 / u_gridRes.y);
+        
+        float d_c = texture(u_velocityGrid, uvCenter).w;
+        float restDensity = 2.0; // target particles per cell
+        
+        if (d_c > restDensity) {
+            float d_r = texture(u_velocityGrid, uvCenter + dx).w;
+            float d_l = texture(u_velocityGrid, uvCenter - dx).w;
+            float d_t = texture(u_velocityGrid, uvCenter + dy).w;
+            float d_b = texture(u_velocityGrid, uvCenter - dy).w;
+            
+            vec2 grad = vec2(d_r - d_l, d_t - d_b);
+            // push particles away from high density areas
+            vel -= grad * 0.4;
+        }
+        
+        // slight surface tension cohesion based on APIC density proxy
+        vec2 gridCenter = (baseNode + 0.5) * u_spacing;
+        vec2 cDir = gridCenter - pos;
+        vel += cDir * 0.005; 
     }
 
     // --- 2b. Apply Shake Impulse (mobile) ---
@@ -1185,10 +1229,10 @@ function initFreeFluidParticles() {
   const dx = 2.0 * r;
   const dy = (Math.sqrt(3.0) / 2.0) * dx;
 
-  // Dam-break column: left 45% width, full height minus wall margin
+  // Bottom pool: full width, bottom 40% of height
   const margin  = SPACING + r;
-  const fillW   = w * 0.45;
-  const startY  = margin;
+  const fillW   = w - margin;
+  const startY  = h * 0.6; // lower 40%
   const endY    = h - margin;
 
   const posX = [];
@@ -1677,6 +1721,7 @@ function render() {
   gl.uniform1f(
       gl.getUniformLocation(updateProgram, 'u_restitution'), RESTITUTION);
   gl.uniform1f(gl.getUniformLocation(updateProgram, 'u_drag'), DRAG);
+  gl.uniform1i(gl.getUniformLocation(updateProgram, 'u_isFreeFluid'), FREE_FLUID ? 1 : 0);
 
   // Disable rasterization since we are just doing math
   gl.enable(gl.RASTERIZER_DISCARD);
@@ -2305,7 +2350,11 @@ document.getElementById('btn-free-fluid').addEventListener('click', () => {
   FREE_FLUID = !FREE_FLUID;
   document.getElementById('btn-free-fluid').classList.toggle('active', FREE_FLUID);
 
+  const textOnlyEls = document.querySelectorAll('.text-mode-only');
+
   if (FREE_FLUID) {
+    textOnlyEls.forEach(el => el.classList.add('item-hidden'));
+
     // Reinitialize particles as hex-packed dam break
     initFreeFluidParticles();
 
@@ -2325,6 +2374,8 @@ document.getElementById('btn-free-fluid').addEventListener('click', () => {
     document.getElementById('slider-gravity').value = gravityMag;
     document.getElementById('val-gravity').innerText = gravityMag.toFixed(2);
   } else {
+    textOnlyEls.forEach(el => el.classList.remove('item-hidden'));
+
     // Restore text particles and settings
     USE_METABALLS = _ffSavedMetaballs;
     document.getElementById('check-metaball').checked = _ffSavedMetaballs;

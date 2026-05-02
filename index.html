@@ -67,17 +67,17 @@
                     <small>Higher = Slides on ice. Lower = Stops instantly.</small>
                     <input type="range" id="slider-drag" min="0.80" max="0.99" step="0.01" value="0.96">
                 </label>
-                <label>
+                <label class="text-mode-only">
                     Spring Return Speed: <span id="val-return">4.0</span>
                     <small>How violently they snap back to their text shape.</small>
                     <input type="range" id="slider-return" min="0.0" max="10.0" step="0.1" value="4.0">
                 </label>
-                <label>
+                <label class="text-mode-only">
                     Spring Deceleration: <span id="val-decel">70</span>
                     <small>Higher = Soft lazy ending. Lower = Sharp hard stop.</small>
                     <input type="range" id="slider-decel" min="10" max="250" step="1" value="70">
                 </label>
-                <div class="gravity-row">
+                <div class="gravity-row text-mode-only">
                     <label style="flex:1; min-width:0;">
                         Gravity: <span id="val-gravity">0.00</span>
                         <small>Acceleration applied every frame. On mobile, direction follows device tilt.</small>
@@ -106,7 +106,7 @@
                     <small>Pixel size of your interaction brush.</small>
                     <input type="range" id="slider-radius" min="10" max="150" step="1" value="40">
                 </label>
-                <label>
+                <label class="text-mode-only">
                     Spring Drag Free Radius: <span id="val-yield">3.75</span>
                     <small>Multiplier defining how far particles must be to detach and freely float.</small>
                     <input type="range" id="slider-yield" min="1.0" max="10.0" step="0.25" value="3.75">
@@ -151,7 +151,7 @@
         <div class="accordion-section">
             <div class="accordion-header">Setup <span class="accordion-icon">&#9658;</span></div>
             <div class="accordion-body">
-                <label>
+                <label class="text-mode-only">
                     Display Text (use \n for multiline):
                     <input type="text" id="input-text" value="FLIP\nFLUID">
                 </label>
