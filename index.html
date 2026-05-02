@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FLIP Fluid Text</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:,">
+</head>
+
+<body>
+    <div id="loading">COMPILING APIC SOLVER...</div>
+    <canvas id="simCanvas"></canvas>
+    <canvas id="rippleCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;"></canvas>
+    <div id="controls">GPU APIC Multigrid Solver</div>
+    <div id="gesture-toast"></div>
+
+    <div id="hud">
+        <span id="hud-fps">-- FPS</span>
+        <span id="hud-particles">--</span>
+    </div>
+
+    <div id="demo-hint">Press F to exit demo</div>
+
+    <button id="motion-permission" class="hidden" title="Enable motion controls">Enable Shake</button>
+
+    <div id="btn-cluster">
+        <button id="fullscreen-btn" title="Demo Mode (F)">&#x26F6;</button>
+        <button id="ui-toggle" title="Toggle Settings">&#9881;</button>
+    </div>
+
+    <div id="ui-panel" class="hidden">
+
+        <!-- ── COLOR THEME ── -->
+        <div class="section-title">Color Theme</div>
+        <div class="theme-buttons">
+            <button class="theme-btn active" data-theme="neon">Neon</button>
+            <button class="theme-btn" data-theme="pastel">Pastel</button>
+            <button class="theme-btn" data-theme="mono">Mono</button>
+            <button class="theme-btn" data-theme="fire">Fire</button>
+        </div>
+        <button class="theme-btn theme-btn-pressure" data-theme="pressure">Pressure &mdash; live per-particle heatmap</button>
+        <canvas id="theme-swatch" width="240" height="10"></canvas>
+
+        <!-- ── FLUID PRESETS ── -->
+        <div class="preset-block">
+            <div class="section-title">Fluid Preset</div>
+            <div class="preset-buttons">
+                <button class="preset-btn" data-preset="water">Water</button>
+                <button class="preset-btn" data-preset="honey">Honey</button>
+                <button class="preset-btn" data-preset="sand">Sand</button>
+                <button class="preset-btn" data-preset="smoke">Smoke</button>
+            </div>
+        </div>
+
+        <!-- ── FREE FLUID MODE ── -->
+        <button id="btn-free-fluid">Free Fluid Mode</button>
+
+        <!-- ── ACCORDIONS ── -->
+        <div class="accordion-section open">
+            <div class="accordion-header">Physics <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+
+                <label>
+                    Fluid Drag: <span id="val-drag">0.96</span>
+                    <small>Higher = Slides on ice. Lower = Stops instantly.</small>
+                    <input type="range" id="slider-drag" min="0.80" max="0.99" step="0.01" value="0.96">
+                </label>
+                <label>
+                    Spring Return Speed: <span id="val-return">4.0</span>
+                    <small>How violently they snap back to their text shape.</small>
+                    <input type="range" id="slider-return" min="0.0" max="10.0" step="0.1" value="4.0">
+                </label>
+                <label>
+                    Spring Deceleration: <span id="val-decel">70</span>
+                    <small>Higher = Soft lazy ending. Lower = Sharp hard stop.</small>
+                    <input type="range" id="slider-decel" min="10" max="250" step="1" value="70">
+                </label>
+                <div class="gravity-row">
+                    <label style="flex:1; min-width:0;">
+                        Gravity: <span id="val-gravity">0.00</span>
+                        <small>Acceleration applied every frame. On mobile, direction follows device tilt.</small>
+                        <input type="range" id="slider-gravity" min="0" max="0.8" step="0.01" value="0">
+                    </label>
+                    <canvas id="gravity-wheel" width="72" height="72" title="Click or drag to set gravity direction"></canvas>
+                </div>
+                <label>
+                    Wall Bounce: <span id="val-restitution">0.50</span>
+                    <small>0 = walls absorb all impact. 1 = perfectly elastic.</small>
+                    <input type="range" id="slider-restitution" min="0" max="1" step="0.05" value="0.5">
+                </label>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">Interaction <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    Cursor Force: <span id="val-force">1.0</span>
+                    <small>How hard your mouse blows the fluid away.</small>
+                    <input type="range" id="slider-force" min="0.0" max="5.0" step="0.1" value="1.0">
+                </label>
+                <label>
+                    Cursor Radius: <span id="val-radius">40</span>
+                    <small>Pixel size of your interaction brush.</small>
+                    <input type="range" id="slider-radius" min="10" max="150" step="1" value="40">
+                </label>
+                <label>
+                    Spring Drag Free Radius: <span id="val-yield">3.75</span>
+                    <small>Multiplier defining how far particles must be to detach and freely float.</small>
+                    <input type="range" id="slider-yield" min="1.0" max="10.0" step="0.25" value="3.75">
+                </label>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">Rendering <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    <input type="checkbox" id="check-metaball"> Use 3D SSFR Liquid
+                    <small>Renders screen-space fluid with depth and refraction.</small>
+                </label>
+                <label>
+                    SSFR Blur Radius: <span id="val-metaball">0.5</span>
+                    <small>Depth smoothing radius.</small>
+                    <input type="range" id="slider-metaball" min="0.1" max="5.0" step="0.1" value="0.5">
+                </label>
+                <label>
+                    Refraction Index: <span id="val-refraction">1.33</span>
+                    <small>Glass vs Water distortion.</small>
+                    <input type="range" id="slider-refraction" min="1.0" max="2.0" step="0.01" value="1.33">
+                </label>
+                <label>
+                    Vorticity Spin: <span id="val-vorticity">0.0</span>
+                    <small>Injects artificial turbulent rotation into fluid flows.</small>
+                    <input type="range" id="slider-vorticity" min="0.0" max="5.0" step="0.1" value="0.0">
+                </label>
+                <label>
+                    <input type="checkbox" id="check-obstacle"> Spawn Interactive Obstacle
+                    <small>Right-Click &amp; drag an invisible wall.</small>
+                </label>
+                <label>
+                    Obstacle Radius: <span id="val-obsradius">80</span>
+                    <small>Size of the collision sphere.</small>
+                    <input type="range" id="slider-obsradius" min="20" max="300" step="5" value="80">
+                </label>
+            </div>
+        </div>
+
+        <div class="accordion-section">
+            <div class="accordion-header">Setup <span class="accordion-icon">&#9658;</span></div>
+            <div class="accordion-body">
+                <label>
+                    Display Text (use \n for multiline):
+                    <input type="text" id="input-text" value="FLIP\nFLUID">
+                </label>
+                <label>
+                    Grid Physics Resolution: <span id="val-spacing">8</span>
+                    <small>Lower = Smaller &amp; finer swirls but CPU heavy.</small>
+                    <input type="range" id="slider-spacing" min="4" max="25" step="1" value="8">
+                </label>
+                <label>
+                    Pressure Solver Iterations: <span id="val-iters">30</span>
+                    <small>Higher = Stiff incompressible water. Lower = Bouncy elastic gel.</small>
+                    <input type="range" id="slider-iters" min="5" max="100" step="1" value="30">
+                </label>
+                <label>
+                    Max Particles: <span id="val-particles">120k</span>
+                    <small>Density of the text fill.</small>
+                    <input type="range" id="slider-particles" min="10000" max="300000" step="10000" value="120000">
+                </label>
+                <button id="btn-apply">Apply Engine Changes</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="gpu_script.js"></script>
+</body>
+
+</html>
