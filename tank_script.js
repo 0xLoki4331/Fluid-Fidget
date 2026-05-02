@@ -2056,43 +2056,62 @@ function setupMobileGestures() {
 }
 
 // UI Event Listeners
-document.getElementById('ui-toggle').addEventListener('click', () => {
+function safeOn(id, type, cb) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(type, cb);
+}
+
+safeOn('fullscreen-btn', 'click', () => {
   if (_demoMode) {
     _demoMode = false;
     document.body.classList.remove('demo-mode');
   }
   document.getElementById('ui-panel').classList.toggle('hidden');
 });
-document.getElementById('slider-drag').addEventListener('input', (e) => {
+safeOn('ui-toggle', 'click', () => {
+  if (_demoMode) {
+    _demoMode = false;
+    document.body.classList.remove('demo-mode');
+  }
+  document.getElementById('ui-panel').classList.toggle('hidden');
+});
+
+safeOn('slider-drag', 'input', (e) => {
   DRAG = parseFloat(e.target.value);
-  document.getElementById('val-drag').innerText = DRAG.toFixed(2);
+  const v = document.getElementById('val-drag');
+  if (v) v.innerText = DRAG.toFixed(2);
 });
-document.getElementById('slider-return').addEventListener('input', (e) => {
+safeOn('slider-return', 'input', (e) => {
   returnPullMultiplier = parseFloat(e.target.value);
-  document.getElementById('val-return').innerText =
-      returnPullMultiplier.toFixed(1);
+  const v = document.getElementById('val-return');
+  if (v) v.innerText = returnPullMultiplier.toFixed(1);
 });
-document.getElementById('slider-force').addEventListener('input', (e) => {
+safeOn('slider-force', 'input', (e) => {
   cursorForceMult = parseFloat(e.target.value);
-  document.getElementById('val-force').innerText = cursorForceMult.toFixed(1);
+  const v = document.getElementById('val-force');
+  if (v) v.innerText = cursorForceMult.toFixed(1);
 });
-document.getElementById('slider-radius').addEventListener('input', (e) => {
+safeOn('slider-radius', 'input', (e) => {
   cursorRadiusSize = parseInt(e.target.value, 10);
-  document.getElementById('val-radius').innerText = cursorRadiusSize;
+  const v = document.getElementById('val-radius');
+  if (v) v.innerText = cursorRadiusSize;
 });
-document.getElementById('slider-decel').addEventListener('input', (e) => {
+safeOn('slider-decel', 'input', (e) => {
   springDecel = parseInt(e.target.value, 10);
-  document.getElementById('val-decel').innerText = springDecel;
+  const v = document.getElementById('val-decel');
+  if (v) v.innerText = springDecel;
 });
-document.getElementById('slider-gravity').addEventListener('input', (e) => {
+safeOn('slider-gravity', 'input', (e) => {
   gravityMag = parseFloat(e.target.value);
-  document.getElementById('val-gravity').innerText = gravityMag.toFixed(2);
+  const v = document.getElementById('val-gravity');
+  if (v) v.innerText = gravityMag.toFixed(2);
   updateGravityVec();
   drawGravityWheel();
 });
-document.getElementById('slider-restitution').addEventListener('input', (e) => {
+safeOn('slider-restitution', 'input', (e) => {
   RESTITUTION = parseFloat(e.target.value);
-  document.getElementById('val-restitution').innerText = RESTITUTION.toFixed(2);
+  const v = document.getElementById('val-restitution');
+  if (v) v.innerText = RESTITUTION.toFixed(2);
 });
 
 // Gravity wheel — click or drag to set direction
@@ -2118,41 +2137,46 @@ wheel.addEventListener('mousemove', (e) => {
 wheel.addEventListener('touchstart', setAngleFromEvent, {passive: true});
 wheel.addEventListener('touchmove', setAngleFromEvent, {passive: true});
 })();
-document.getElementById('slider-yield').addEventListener('input', (e) => {
+
+safeOn('slider-yield', 'input', (e) => {
   yieldRadiusMult = parseFloat(e.target.value);
-  document.getElementById('val-yield').innerText = yieldRadiusMult.toFixed(2);
+  const v = document.getElementById('val-yield');
+  if (v) v.innerText = yieldRadiusMult.toFixed(2);
 });
-document.getElementById('slider-spacing').addEventListener('input', (e) => {
-  document.getElementById('val-spacing').innerText = e.target.value;
+safeOn('slider-spacing', 'input', (e) => {
+  const v = document.getElementById('val-spacing');
+  if (v) v.innerText = e.target.value;
 });
-document.getElementById('slider-iters').addEventListener('input', (e) => {
-  document.getElementById('val-iters').innerText = e.target.value;
+safeOn('slider-iters', 'input', (e) => {
+  const v = document.getElementById('val-iters');
+  if (v) v.innerText = e.target.value;
 });
 // Particle limit removed for tank mode
 
-
 // Advanced Feature Bindings
-document.getElementById('check-metaball').addEventListener('change', (e) => {
+safeOn('check-metaball', 'change', (e) => {
   USE_METABALLS = e.target.checked;
 });
-document.getElementById('slider-metaball').addEventListener('input', (e) => {
+safeOn('slider-metaball', 'input', (e) => {
   METABALL_THRESH = parseFloat(e.target.value);
-  document.getElementById('val-metaball').innerText =
-      METABALL_THRESH.toFixed(2);
+  const v = document.getElementById('val-metaball');
+  if (v) v.innerText = METABALL_THRESH.toFixed(2);
 });
-document.getElementById('slider-vorticity').addEventListener('input', (e) => {
+safeOn('slider-vorticity', 'input', (e) => {
   VORTICITY = parseFloat(e.target.value);
-  document.getElementById('val-vorticity').innerText = VORTICITY.toFixed(1);
+  const v = document.getElementById('val-vorticity');
+  if (v) v.innerText = VORTICITY.toFixed(1);
 });
-document.getElementById('check-obstacle').addEventListener('change', (e) => {
+safeOn('check-obstacle', 'change', (e) => {
   USE_OBSTACLE = e.target.checked;
 });
-document.getElementById('slider-obsradius').addEventListener('input', (e) => {
+safeOn('slider-obsradius', 'input', (e) => {
   OBS_RADIUS = parseInt(e.target.value, 10);
-  document.getElementById('val-obsradius').innerText = OBS_RADIUS;
+  const v = document.getElementById('val-obsradius');
+  if (v) v.innerText = OBS_RADIUS;
 });
 
-document.getElementById('slider-spacing').addEventListener('change', (e) => {
+safeOn('slider-spacing', 'change', (e) => {
   SPACING = parseInt(e.target.value, 10);
   loading.style.opacity = '1';
   setTimeout(() => {
